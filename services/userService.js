@@ -23,17 +23,19 @@ var UserService = {
     },
     //Returns user with populated event objects
     getUser: function(userId, callback) {
+        var self = this;
         var id = mongoose.Types.ObjectId(userId.toString());
         User.findById(id, function(err, doc) {
             if (err) console.log(err);
             else {
-                this.getOrganizedEvents(userId, function(organizedEvents) {
-                    doc.organizedEvents = organizedEvents;
-                    this.getLockedEvents(userId, function(lockedEvents) {
-                        doc.upcomingEvents = lockedEvents;
-                        this.getTentativeEvents(userId, function(pendingEvents) {
-                            doc.joinedEvents = pendingEvents;
-                            callback(doc)
+                var newObject = JSON.parse(JSON.stringify(doc));
+                self.getOrganizedEvents(userId, function(organizedEvents) {
+                    newObject['organizedEvents'] = organizedEvents;
+                    self.getLockedEvents(userId, function(lockedEvents) {
+                        newObject.upcomingEvents = lockedEvents;
+                        self.getTentativeEvents(userId, function(pendingEvents) {
+                            newObject.joinedEvents = pendingEvents;
+                            callback(newObject)
                         });
                     });
                 });
@@ -53,7 +55,7 @@ var UserService = {
                     doc['organizer'] = "";
                 }
                 if (docs.lastIndexOf(doc) + 1 == docs.length)
-                    callback(doc);
+                    callback(docs);
             });
         });
     },
@@ -64,10 +66,16 @@ var UserService = {
             else {
                 var lockedEvents = [];
                 for (var i = 0; i < doc.activeEvents.length; ++i) {
-                    Event.findById(mongoose.Types.ObjectId(doc.activeEvents[i].toString()), function (err, event) {
-                        //Find locked event that hasn't ended yet
-                        if (event.lockTime < Date.now() && event.endTime > Date.now()) {
-                            lockedEvents.push(event);
+                    Event.findOne({
+                        _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
+                        organizer: {$ne: userId }
+                    }, function (err, event) {
+                        if (err) callback(err);
+                        if (event != null) {
+                            //Find locked event that hasn't ended yet
+                            if (event.lockTime < Date.now() && event.endTime > Date.now()) {
+                                lockedEvents.push(event);
+                            }
                         }
                         if (i == doc.activeEvents.length)
                             callback(lockedEvents);
@@ -83,12 +91,18 @@ var UserService = {
             else {
                 var tentativeEvents = [];
                 for (var i = 0; i < doc.activeEvents.length; ++i) {
-                    Event.findById(mongoose.Types.ObjectId(doc.activeEvents[i].toString()), function (err, event) {
-                        //Find tentative event (not locked) that hasn't ended yet
-                        if (event.lockTime > Date.now() && event.endTime > Date.now()) {
-                            event.attendees = [];
-                            event.organizer = "";
-                            tentativeEvents.push(event);
+                    Event.findOne({
+                        _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
+                        organizer: {$ne: userId.toString() }
+                    }, function (err, event) {
+                        if (err) callback(err);
+                        if (event != null) {
+                            //Find tentative event (not locked) that hasn't ended yet
+                            if (event.lockTime > Date.now() && event.endTime > Date.now()) {
+                                event.attendees = [];
+                                event.organizer = "";
+                                tentativeEvents.push(event);
+                            }
                         }
                         if (i == doc.activeEvents.length)
                             callback(tentativeEvents);

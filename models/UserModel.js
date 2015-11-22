@@ -11,6 +11,9 @@ var userSchema = new Schema({
     },
     activeEvents: [String],
     pastEvents: [String],
+    organizedEvents: [Object],
+    upcomingEvents: [Object],
+    joinedEvents: [Object],
     date: { type: Date, default: Date.now },
     rating: {
         overall: Number,
