@@ -1,3 +1,5 @@
+"use strict";
+
 var express = require('express');
 var userService = require('../services/userService.js');
 var router = express.Router();
@@ -14,8 +16,22 @@ router.post('/create', function(req, res, next) {
   });
 });
 
-//Returns user meta data
-router.get('/:userId', function(req, res, next) {
+//Edits user profile
+router.post('/edit', function(req, res, next) {
+  userService.editUser(req.body.userData, function(status) {
+    res.send(status);
+  });
+});
+
+//Returns simple user meta data
+router.get('/:userId/simple', function(req, res, next) {
+  userService.getSimpleUser(req.params.userId, function(user) {
+    res.json(user);
+  });
+});
+
+//Returns user meta data with populated event objects
+router.get('/:userId/full', function(req, res, next) {
   userService.getUser(req.params.userId, function(user) {
     res.json(user);
   });

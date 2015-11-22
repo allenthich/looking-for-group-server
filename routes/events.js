@@ -7,9 +7,27 @@ router.get('/', function(req, res, next) {
     res.send('respond with a resource');
 });
 
+router.post('/join', function(req, res, next) {
+    eventService.joinEvent(req.body.joinData, function(e) {
+        if (e.status == 200)
+            res.status(200);
+        else
+            res.status(403);
+    });
+});
+
+router.post('/leave', function(req, res, next) {
+    eventService.leaveEvent(req.body.leaveData, function(e) {
+        if (e.status == 200)
+            res.status(200);
+        else
+            res.status(403);
+    });
+});
+
 //Returns event meta data
 router.get('/:eventId', function(req, res, next) {
-    eventService.getEvent(req.params.eventId, function(event) {
+    eventService.getEventDetails(req.params.eventId, function(event) {
         res.json(event);
     });
 });
