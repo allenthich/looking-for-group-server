@@ -16,8 +16,14 @@ router.use(function (req, res, next) {
 });
 
 router.post('/join', function(req, res, next) {
-    eventService.joinEvent(req.body.userId, req.body.eventId, function(e) {
-        if (e.status == 200)
+    eventService.createEvent(req.body.eventInfo, function(resp) {
+        res.json(resp);
+    });
+});
+
+router.post('/join', function(req, res, next) {
+    eventService.joinEvent(req.body.userId, req.body.eventId, function(resp) {
+        if (resp.status == 200)
             res.sendStatus(200);
         else
             res.sendStatus(403);
@@ -25,9 +31,8 @@ router.post('/join', function(req, res, next) {
 });
 
 router.post('/leave', function(req, res, next) {
-    eventService.leaveEvent(req.body.userId, req.body.eventId, function(e) {
-        console.log(e)
-        if (e.status == 200)
+    eventService.leaveEvent(req.body.userId, req.body.eventId, function(resp) {
+        if (resp.status == 200)
             res.sendStatus(200);
         else
             res.sendStatus(403);
@@ -41,15 +46,16 @@ router.get('/:eventId', function(req, res, next) {
     });
 });
 
-//Returns array of event user objects
-router.get('/:eventId/attendees', function(req, res, next) {
-    eventService.getAttendees(req.params.eventId, function(attendees) {
-        res.json(attendees);
+//Returns event meta data
+router.delete('/:eventId', function(req, res, next) {
+    eventService.deleteEvent(req.params.eventId, function(resp) {
+        res.json(resp);
     });
 });
 
 //Returns array of eventIds of
 router.get('/:state/:city', function(req, res, next) {
+    console.log("hit")
     eventService.getCityEvents(req.params.state, req.params.city, function(events) {
         res.json(events);
     });

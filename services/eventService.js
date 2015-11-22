@@ -6,6 +6,33 @@ var userService = require('../services/userService.js');
 var mongoose = require('mongoose');
 
 var EventsService = {
+    createEvent: function(eventInfo, callback) {
+        Event.create({
+            title:  eventInfo.title,
+            description: eventInfo.description,
+            location:   {
+                city: eventInfo.city,
+                state: eventInfo.state
+            },
+            startTime: eventInfo.startTime,
+            endTime: eventInfo.endTime,
+            category: eventInfo.category,
+            organizer: eventInfo.organizer,
+            minPerson: eventInfo.minPerson,
+            maxPerson: eventInfo.maxPerson,
+            minAge: eventInfo.minAge,
+            maxAge: eventInfo.maxAge,
+            numPeople: eventInfo.numPeople,
+            lockTime: eventInfo.lockTime
+        }, function(err) {
+            if (err) {
+                callback(err);
+            } else {
+                callback({status: 200, message: "Event created!"});
+            }
+        });
+    },
+
     //To account for locked event, init privacy by deleting fields
     getEventDetails: function(eventId, callback) {
         var id = mongoose.Types.ObjectId(eventId.toString());
@@ -28,8 +55,21 @@ var EventsService = {
             callback(doc);
         });
     },
-    getCityEvents: function(eventId, callback) {
-        //TODO: Get
+    getCityEvents: function(state, city, callback) {
+        Event.find({
+            location: {
+                city: city,
+                state: state
+            }, lockTime: {
+                $gt: Date.now()
+                }
+            }, '-attendees -organizer', function(err, events){
+            if (err) {
+                callback(err);
+            } else {
+                callback(events);
+            }
+        })
     },
     joinEvent: function(userId, eventId, callback) {
         var uid = mongoose.Types.ObjectId(userId);
@@ -51,6 +91,16 @@ var EventsService = {
                 if (err) callback(err);
                 callback({status: 200});
             });
+        });
+    },
+    deleteEvent: function(eventId, callback) {
+        var id = mongoose.Types.ObjectId(eventId);
+        Event.findByIdAndRemove(id, function(err) {
+            if (err) {
+                callback(err);
+            } else {
+                callback({status: 200, message: "Event deleted!"});
+            }
         });
     }
 };

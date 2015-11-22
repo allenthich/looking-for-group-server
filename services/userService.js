@@ -154,7 +154,7 @@ var UserService = {
                             //Find locked event that hasn't ended yet
                             if (event.lockTime < Date.now() && event.endTime > Date.now()) {
                                 event.attendees.forEach(function(attendeeId) {
-                                    self.getSimpleuser(attendeeId, function(userObj) {
+                                    self.getSimpleUser(attendeeId, function(userObj) {
                                         newEvent.attendees.push(userObj);
                                     });
                                 });
