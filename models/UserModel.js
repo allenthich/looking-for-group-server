@@ -5,6 +5,8 @@ var userSchema = new Schema({
     name:  String,
     age: Number,
     description: String,
+    facebookId: String,
+    api_token: String,
     location:   {
         city: String,
         state: String

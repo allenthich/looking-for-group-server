@@ -1,27 +1,36 @@
+"use strict";
+
 var express = require('express');
 var eventService = require('../services/eventService.js');
+var userService = require('../services/userService.js');
 var router = express.Router();
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-    res.send('respond with a resource');
+router.use(function (req, res, next) {
+    userService.checkAuthentication(req.cookies.api_token, function(resp) {
+        if (resp.status != 200){
+            res.sendStatus(401);
+        } else {
+            next();
+        }
+    });
 });
 
 router.post('/join', function(req, res, next) {
-    eventService.joinEvent(req.body.joinData, function(e) {
+    eventService.joinEvent(req.body.userId, req.body.eventId, function(e) {
         if (e.status == 200)
-            res.status(200);
+            res.sendStatus(200);
         else
-            res.status(403);
+            res.sendStatus(403);
     });
 });
 
 router.post('/leave', function(req, res, next) {
-    eventService.leaveEvent(req.body.leaveData, function(e) {
+    eventService.leaveEvent(req.body.userId, req.body.eventId, function(e) {
+        console.log(e)
         if (e.status == 200)
-            res.status(200);
+            res.sendStatus(200);
         else
-            res.status(403);
+            res.sendStatus(403);
     });
 });
 

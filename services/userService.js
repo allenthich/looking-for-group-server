@@ -3,10 +3,60 @@
 var User = require('../models/UserModel').user;
 var Event = require('../models/EventModel').event;
 var mongoose = require('mongoose');
+var Q = require('q');
+var request = require('request');
+var crypto = require('crypto');
 
 var UserService = {
-    createUser: function (userData) {
-      //TODO: Create model
+    checkAuthentication: function(auth_token, callback) {
+        User.findOne({api_token: auth_token}, function(err, user) {
+            if (err) {
+                console.log(err)
+                callback({status: 401});
+            } else {
+                if (user){
+                    callback({status: 200});
+                } else {
+                    callback({status: 401});
+                }
+            }
+        });
+    },
+    loginUser: function (fb_token, callback) {
+        var self = this;
+        verifyFacebookUserAccessToken(fb_token).then(function(user) {
+            if (!user.message){
+                self.getUserByFbId(user, function(respUser) {
+                    callback(respUser);
+                });
+            } else {
+                callback(user);
+            }
+        });
+
+        // Call facebook API to verify the token is valid
+        // https://graph.facebook.com/me?access_token=$token
+        function verifyFacebookUserAccessToken(token) {
+            var deferred = Q.defer();
+            var path = 'https://graph.facebook.com/me?access_token=' + token;
+            request(path, function (error, response, body) {
+                var data = JSON.parse(body);
+                if (!error && response && response.statusCode && response.statusCode == 200) {
+                    var user = {
+                        facebookUserId: data.id,
+                        name: data.name
+                    };
+                    deferred.resolve(user);
+                }
+                else {
+                    console.log(data.error);
+                    //console.log(response);
+                    deferred.reject({code: response.statusCode, message: data.error.message});
+                    callback({code: response.statusCode, message: data.error.message});
+                }
+            });
+            return deferred.promise;
+        }
     },
     editUser: function (userData) {
     //TODO: Edit Model
@@ -26,8 +76,9 @@ var UserService = {
         var self = this;
         var id = mongoose.Types.ObjectId(userId.toString());
         User.findById(id, function(err, doc) {
-            if (err) console.log(err);
-            else {
+            if (err) {
+                console.log(err)
+            } else {
                 var newObject = JSON.parse(JSON.stringify(doc));
                 self.getOrganizedEvents(userId, function(organizedEvents) {
                     newObject['organizedEvents'] = organizedEvents;
@@ -35,9 +86,34 @@ var UserService = {
                         newObject.upcomingEvents = lockedEvents;
                         self.getTentativeEvents(userId, function(pendingEvents) {
                             newObject.joinedEvents = pendingEvents;
-                            callback(newObject)
+                            callback(newObject);
                         });
                     });
+                });
+            }
+        });
+    },
+    getUserByFbId: function(userObject, callback) {
+        var self = this;
+        User.findOne({facebookId: userObject.facebookUserId}, function(err, usr) {
+            if (err) callback(err);
+            if (usr) {
+                var new_token = crypto.randomBytes(20).toString('hex');
+                User.findByIdAndUpdate(usr._id, {api_token: new_token}, function(err, doc) {
+                    if (err) callback(err);
+                    self.getUser(usr._id, function(usrObj) {
+                        callback(usrObj);
+                    });
+                });
+            } else {
+                //Create api token
+                var api_token = crypto.randomBytes(20).toString('hex');
+                User.create({
+                    name: userObject.name,
+                    facebookId: userObject.facebookUserId,
+                    api_token: api_token
+                }, function(err, user) {
+                    callback(user);
                 });
             }
         });
@@ -60,6 +136,7 @@ var UserService = {
         });
     },
     getLockedEvents: function(userId, callback) {
+        var self = this;
         var id = mongoose.Types.ObjectId(userId.toString());
         User.findById(id, 'activeEvents', function(err, doc) {
             if (err) console.log(err);
@@ -72,9 +149,16 @@ var UserService = {
                     }, function (err, event) {
                         if (err) callback(err);
                         if (event != null) {
+                            var newEvent = JSON.parse(JSON.stringify(event));
+                            newEvent.attendees = [];
                             //Find locked event that hasn't ended yet
                             if (event.lockTime < Date.now() && event.endTime > Date.now()) {
-                                lockedEvents.push(event);
+                                event.attendees.forEach(function(attendeeId) {
+                                    self.getSimpleuser(attendeeId, function(userObj) {
+                                        newEvent.attendees.push(userObj);
+                                    });
+                                });
+                                lockedEvents.push(newEvent);
                             }
                         }
                         if (i == doc.activeEvents.length)
