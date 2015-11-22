@@ -20,7 +20,8 @@ var eventSchema = new Schema({
     maxAge: Number,
     numPeople: Number,
     lockTime: Number,
-    attendees: [String]
+    attendees: [String],
+    chatId: String
 });
 
 

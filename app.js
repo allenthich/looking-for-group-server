@@ -9,6 +9,7 @@ var mongoose = require('mongoose');
 var routes = require('./routes/index');
 var users = require('./routes/users');
 var events = require('./routes/events');
+var chats = require('./routes/chats');
 
 mongoose.connect('mongodb://alengeo:fort20twenty@candidate.56.mongolayer.com:10519,candidate.55.mongolayer.com:10558/LFG?replicaSet=set-56500e1b74a290e4be0000fd')
 
@@ -28,6 +29,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
 app.use('/users', users);
+app.use('/chats', chats);
 app.use('/events', events);
 
 // catch 404 and forward to error handler

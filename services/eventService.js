@@ -2,7 +2,9 @@
 
 var Event = require('../models/EventModel').event;
 var User = require('../models/UserModel').user;
+var Chat = require('../models/ChatModel').chat;
 var userService = require('../services/userService.js');
+var chatService = require('../services/chatService.js');
 var mongoose = require('mongoose');
 
 var EventsService = {
@@ -93,13 +95,16 @@ var EventsService = {
             });
         });
     },
+    //Event deletion propagates to deleting chat
     deleteEvent: function(eventId, callback) {
         var id = mongoose.Types.ObjectId(eventId);
-        Event.findByIdAndRemove(id, function(err) {
+        Event.findByIdAndRemove(id, function(err, doc) {
             if (err) {
                 callback(err);
             } else {
-                callback({status: 200, message: "Event deleted!"});
+                chatService.deleteChat(doc.chatId, function(resp) {
+                    callback(resp);
+                });
             }
         });
     }
