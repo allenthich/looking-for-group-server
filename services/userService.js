@@ -6,6 +6,7 @@ var mongoose = require('mongoose');
 var Q = require('q');
 var request = require('request');
 var crypto = require('crypto');
+var timeService = require('../services/timeService.js');
 
 var UserService = {
     checkAuthentication: function(auth_token, callback) {
@@ -18,6 +19,20 @@ var UserService = {
                     callback({status: 200});
                 } else {
                     callback({status: 401});
+                }
+            }
+        });
+    },
+    getUserByToken: function(token, callback) {
+        User.findOne({api_token: token}, function(err, user) {
+            if (err) {
+                callback(err);
+            } else {
+                if (user){
+                    callback(user._id);
+                } else {
+                    console.log("User not found");
+                    callback(null);
                 }
             }
         });
@@ -59,7 +74,14 @@ var UserService = {
         }
     },
     editUser: function (userData) {
-    //TODO: Edit Model
+        var id = mongoose.Types.ObjectId(userData.userId);
+        User.findByIdAndUpdate(id, userData, function(err) {
+            if (err) {
+                callback(err);
+            } else {
+                callback();
+            }
+        });
     },
     getSimpleUser: function(userId, callback) {
         var id = mongoose.Types.ObjectId(userId.toString());
@@ -77,11 +99,11 @@ var UserService = {
         var id = mongoose.Types.ObjectId(userId.toString());
         User.findById(id, function(err, doc) {
             if (err) {
-                console.log(err)
+                callback(err);
             } else {
                 var newObject = JSON.parse(JSON.stringify(doc));
                 self.getOrganizedEvents(userId, function(organizedEvents) {
-                    newObject['organizedEvents'] = organizedEvents;
+                    newObject.organizedEvents = organizedEvents;
                     self.getLockedEvents(userId, function(lockedEvents) {
                         newObject.upcomingEvents = lockedEvents;
                         self.getTentativeEvents(userId, function(pendingEvents) {
@@ -95,15 +117,26 @@ var UserService = {
     },
     getUserByFbId: function(userObject, callback) {
         var self = this;
-        User.findOne({facebookId: userObject.facebookUserId}, function(err, usr) {
-            if (err) callback(err);
-            if (usr) {
+        User.findOne({facebookId: userObject.facebookUserId}, function(err, user) {
+            if (err) {
+                callback(err);
+            }
+            if (user) {
                 var new_token = crypto.randomBytes(20).toString('hex');
-                User.findByIdAndUpdate(usr._id, {api_token: new_token}, function(err, doc) {
-                    if (err) callback(err);
-                    self.getUser(usr._id, function(usrObj) {
-                        callback(usrObj);
-                    });
+                User.findByIdAndUpdate(user._id, {api_token: new_token}, function(err, doc) {
+                    if (err) {
+                        callback(err);
+                    } else {
+                        self.getUser(user._id, function(usrObj) {
+                            var newUsr = JSON.parse(JSON.stringify(usrObj));
+                            delete newUsr.api_token;
+                            var container = {
+                                api_token: usrObj.api_token,
+                                user: newUsr
+                            };
+                            callback(container);
+                        });
+                    }
                 });
             } else {
                 //Create api token
@@ -113,7 +146,13 @@ var UserService = {
                     facebookId: userObject.facebookUserId,
                     api_token: api_token
                 }, function(err, user) {
-                    callback(user);
+                    var newUsr = JSON.parse(JSON.stringify(user));
+                    delete newUsr.api_token;
+                    var container = {
+                        api_token: user.api_token,
+                        user: newUsr
+                    };
+                    callback(container);
                 });
             }
         });
@@ -124,24 +163,37 @@ var UserService = {
             organizer: userId,
             endTime: { $gt: Date.now()}
         }, function(err, docs) {
-            if (err) console.log(err);
-            docs.forEach(function(doc) {
-                if (doc.lockTime > Date.now()){
-                    doc['attendees'] = [];
-                    doc['organizer'] = "";
+            if (err) {
+                callback(err);
+            } else {
+                if (docs.length != 0){
+                    docs.forEach(function(doc) {
+                        if (doc.lockTime > Date.now()){
+                            doc['attendees'] = [];
+                            doc['organizer'] = "";
+                            doc = timeService.prettify(doc);
+                        }
+                        if (docs.lastIndexOf(doc) + 1 == docs.length) {
+                            callback(docs);
+                        }
+                    });
                 }
-                if (docs.lastIndexOf(doc) + 1 == docs.length)
-                    callback(docs);
-            });
+                callback(docs);
+            }
         });
     },
     getLockedEvents: function(userId, callback) {
         var self = this;
         var id = mongoose.Types.ObjectId(userId.toString());
         User.findById(id, 'activeEvents', function(err, doc) {
-            if (err) console.log(err);
+            if (err) {
+                callback(err);
+            }
             else {
                 var lockedEvents = [];
+                if (doc.activeEvents.length == 0) {
+                    callback(lockedEvents);
+                }
                 for (var i = 0; i < doc.activeEvents.length; ++i) {
                     Event.findOne({
                         _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
@@ -151,6 +203,7 @@ var UserService = {
                         if (event != null) {
                             var newEvent = JSON.parse(JSON.stringify(event));
                             newEvent.attendees = [];
+                            newEvent = timeService.prettify(newEvent);
                             //Find locked event that hasn't ended yet
                             if (event.lockTime < Date.now() && event.endTime > Date.now()) {
                                 event.attendees.forEach(function(attendeeId) {
@@ -171,9 +224,14 @@ var UserService = {
     getTentativeEvents: function(userId, callback) {
         var id = mongoose.Types.ObjectId(userId.toString());
         User.findById(id, 'activeEvents', function(err, doc) {
-            if (err) console.log(err);
+            if (err) {
+                callback(err);
+            }
             else {
                 var tentativeEvents = [];
+                if (doc.activeEvents.length == 0) {
+                    callback(tentativeEvents);
+                }
                 for (var i = 0; i < doc.activeEvents.length; ++i) {
                     Event.findOne({
                         _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
@@ -185,6 +243,7 @@ var UserService = {
                             if (event.lockTime > Date.now() && event.endTime > Date.now()) {
                                 event.attendees = [];
                                 event.organizer = "";
+                                event = timeService.prettify(event);
                                 tentativeEvents.push(event);
                             }
                         }

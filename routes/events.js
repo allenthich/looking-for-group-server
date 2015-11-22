@@ -6,7 +6,8 @@ var userService = require('../services/userService.js');
 var router = express.Router();
 
 router.use(function (req, res, next) {
-    userService.checkAuthentication(req.cookies.api_token, function(resp) {
+    console.log("Cookie events: ", req.body.api_token);
+    userService.checkAuthentication(req.body.api_token, function(resp) {
         if (resp.status != 200){
             res.sendStatus(401);
         } else {
@@ -15,8 +16,8 @@ router.use(function (req, res, next) {
     });
 });
 
-router.post('/join', function(req, res, next) {
-    eventService.createEvent(req.body.eventInfo, function(resp) {
+router.post('/create', function(req, res, next) {
+    eventService.createEvent(req.body.event, req.body.api_token, function(resp) {
         res.json(resp);
     });
 });

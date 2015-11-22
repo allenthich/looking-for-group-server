@@ -5,7 +5,8 @@ var userService = require('../services/userService.js');
 var router = express.Router();
 
 router.use(function (req, res, next) {
-  userService.checkAuthentication(req.cookies.api_token, function(resp) {
+  console.log("Cookie user: ", req.body.api_token);
+  userService.checkAuthentication(req.body.api_token, function(resp) {
     if (resp.status != 200){
       res.sendStatus(401);
     } else {
@@ -15,16 +16,16 @@ router.use(function (req, res, next) {
 });
 
 //Creates user
-router.post('/create', function(req, res, next) {
-  userService.createUser(req.body.userData, function(status) {
-    res.send(status);
-  });
-});
+//router.post('/create', function(req, res, next) {
+//  userService.createUser(req.body.userData, function(status) {
+//    res.send(status);
+//  });
+//});
 
 //Edits user profile
 router.post('/edit', function(req, res, next) {
-  userService.editUser(req.body.userData, function(status) {
-    res.send(status);
+  userService.editUser(req.body.userData, function() {
+    res.status(200);
   });
 });
 

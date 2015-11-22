@@ -5,33 +5,45 @@ var User = require('../models/UserModel').user;
 var Chat = require('../models/ChatModel').chat;
 var userService = require('../services/userService.js');
 var chatService = require('../services/chatService.js');
+var timeService = require('../services/timeService.js');
 var mongoose = require('mongoose');
 
 var EventsService = {
-    createEvent: function(eventInfo, callback) {
-        Event.create({
-            title:  eventInfo.title,
-            description: eventInfo.description,
-            location:   {
-                city: eventInfo.city,
-                state: eventInfo.state
-            },
-            startTime: eventInfo.startTime,
-            endTime: eventInfo.endTime,
-            category: eventInfo.category,
-            organizer: eventInfo.organizer,
-            minPerson: eventInfo.minPerson,
-            maxPerson: eventInfo.maxPerson,
-            minAge: eventInfo.minAge,
-            maxAge: eventInfo.maxAge,
-            numPeople: eventInfo.numPeople,
-            lockTime: eventInfo.lockTime
-        }, function(err) {
-            if (err) {
-                callback(err);
-            } else {
-                callback({status: 200, message: "Event created!"});
-            }
+    createEvent: function(eventInfo, api_token, callback) {
+        var id = "";
+        eventInfo = JSON.parse(eventInfo);
+        //console.log(eventInfo);
+        //var s = Date.parse(eventInfo.startTime);
+        //var e = Date.parse(eventInfo.endTime);
+        //var l = Date.parse(eventInfo.lockTime);
+        //console.log("StartTime: ", t.toISOString());
+        //console.log("EndTime: ", u.toISOString());
+
+        userService.getUserByToken(api_token, function(id) {
+            Event.create({
+                title:  eventInfo.title,
+                description: eventInfo.description,
+                location:   {
+                    city: eventInfo.city,
+                    state: eventInfo.state
+                },
+                startTime: Date.parse(eventInfo.startTime),
+                endTime: Date.parse(eventInfo.endTime),
+                category: eventInfo.category,
+                organizer: id,
+                minPerson: eventInfo.minPerson,
+                maxPerson: eventInfo.maxPerson,
+                minAge: eventInfo.minAge,
+                maxAge: eventInfo.maxAge,
+                numPeople: 1,
+                lockTime: Date.parse(eventInfo.lockTime)
+            }, function(err, tentativeEvent) {
+                if (err) {
+                    callback(err);
+                } else {
+                    callback(timeService.prettify(tentativeEvent));
+                }
+            });
         });
     },
 
@@ -42,6 +54,7 @@ var EventsService = {
             var newObject = JSON.parse(JSON.stringify(doc));
             newObject['attendees'] = [];
             newObject['organizer'] = "";
+            newObject = timeService.prettify(newObject);
 
             if (err) console.log(err);
             if (doc.lockTime < Date.now()){
@@ -69,7 +82,11 @@ var EventsService = {
             if (err) {
                 callback(err);
             } else {
-                callback(events);
+                var prettyEvents = [];
+                events.forEach(function(event) {
+                    prettyEvents.push(timeService.prettify(event));
+                });
+                callback(prettyEvents);
             }
         })
     },

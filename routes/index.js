@@ -11,7 +11,7 @@ router.get('/', function(req, res, next) {
 router.post('/login', function(req, res, next) {
   userService.loginUser(req.body.fb_access_token, function(userObj) {
       res.json(userObj);
-  })
+  });
 });
 
 module.exports = router;
