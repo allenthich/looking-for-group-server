@@ -10,29 +10,29 @@ var mongoose = require('mongoose');
 
 var EventsService = {
     createEvent: function(eventInfo, api_token, callback) {
-        var id = "";
         eventInfo = JSON.parse(eventInfo);
         //console.log(eventInfo);
         //var s = Date.parse(eventInfo.startTime);
         //var e = Date.parse(eventInfo.endTime);
         //var l = Date.parse(eventInfo.lockTime);
-        //console.log("StartTime: ", t.toISOString());
-        //console.log("EndTime: ", u.toISOString());
+        console.log("StartTime: ", eventInfo.startTime);
+        console.log("EndTime: ", eventInfo.endTime);
 
-        userService.getUserByToken(api_token, function(id) {
+        userService.getUserByToken(api_token, function(user) {
             Event.create({
                 title:  eventInfo.title,
                 description: eventInfo.description,
                 location:   {
-                    city: eventInfo.city,
-                    state: eventInfo.state
+                    city: eventInfo.location.city,
+                    state: eventInfo.location.state
                 },
                 startTime: Date.parse(eventInfo.startTime),
+                activeEvent: true,
                 endTime: Date.parse(eventInfo.endTime),
                 category: eventInfo.category,
-                organizer: id,
-                minPerson: eventInfo.minPerson,
-                maxPerson: eventInfo.maxPerson,
+                organizer: user._id,
+                minPeople: eventInfo.minPeople,
+                maxPeople: eventInfo.maxPeople,
                 minAge: eventInfo.minAge,
                 maxAge: eventInfo.maxAge,
                 numPeople: 1,
@@ -123,6 +123,50 @@ var EventsService = {
                     callback(resp);
                 });
             }
+        });
+    },
+    endEvents: function() {
+        Events.find({activeEvent: true, endTime: { $lt: Date.now() }}, function(err, events) {
+            if (err) {
+                console.log(err);
+            } else {
+                if (events.length == 0) {
+                    return;
+                } else {
+                    events.forEach(function(event) {
+                        event.attendees.forEach(function(userId) {
+                            var uid = mongoose.Types.ObjectId(userId);
+                            User.findByIdAndUpdate(uid,
+                                { activeEvents: {$pull: event._id}, pastEvents: {$pushAll: event._id}} , function(err) {
+                                    if (err) {
+                                        console.log(err);
+                                    }
+                            });
+                        });
+                        event.activeEvent = false;
+                    });
+
+                }
+            }
+
+        })
+    },
+    getEventByCategory: function(category, token, callback) {
+        //Find location then query categories, return list of event objects
+        userService.getUserByToken(token, function(user) {
+            Event.find({
+                category: category,
+                'location.city' : user.location.city,
+                'location.state' : user.location.state,
+                organizer: { $ne: user._id},
+                lockTime: {$gt: Date.now()}
+            }, function(err, events) {
+                if (err) {
+                    callback(err);
+                } else {
+                    callback(events);
+                }
+            });
         });
     }
 };

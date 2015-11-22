@@ -29,7 +29,7 @@ var UserService = {
                 callback(err);
             } else {
                 if (user){
-                    callback(user._id);
+                    callback(user);
                 } else {
                     console.log("User not found");
                     callback(null);
@@ -161,98 +161,137 @@ var UserService = {
         //Events GreaterThan time now
         Event.find({
             organizer: userId,
-            endTime: { $gt: Date.now()}
+            lockTime: {$gt: Date.now()}
         }, function(err, docs) {
             if (err) {
                 callback(err);
             } else {
-                if (docs.length != 0){
-                    docs.forEach(function(doc) {
-                        if (doc.lockTime > Date.now()){
-                            doc['attendees'] = [];
-                            doc['organizer'] = "";
-                            doc = timeService.prettify(doc);
-                        }
-                        if (docs.lastIndexOf(doc) + 1 == docs.length) {
-                            callback(docs);
-                        }
-                    });
-                }
+                docs.forEach(function(doc) {
+                    doc['attendees'] = [];
+                    doc['organizer'] = "";
+                    doc = timeService.prettify(doc);
+                });
                 callback(docs);
             }
         });
     },
     getLockedEvents: function(userId, callback) {
         var self = this;
-        var id = mongoose.Types.ObjectId(userId.toString());
-        User.findById(id, 'activeEvents', function(err, doc) {
+        Event.find({
+            $or: [{organizer: userId}, {attendees: {$in: [userId]}}],
+            lockTime: {$lt: Date.now()},
+            endTime: {$gt: Date.now()}
+        }, function(err, docs) {
             if (err) {
                 callback(err);
-            }
-            else {
+            } else {
                 var lockedEvents = [];
-                if (doc.activeEvents.length == 0) {
-                    callback(lockedEvents);
-                }
-                for (var i = 0; i < doc.activeEvents.length; ++i) {
-                    Event.findOne({
-                        _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
-                        organizer: {$ne: userId }
-                    }, function (err, event) {
-                        if (err) callback(err);
-                        if (event != null) {
-                            var newEvent = JSON.parse(JSON.stringify(event));
-                            newEvent.attendees = [];
-                            newEvent = timeService.prettify(newEvent);
-                            //Find locked event that hasn't ended yet
-                            if (event.lockTime < Date.now() && event.endTime > Date.now()) {
-                                event.attendees.forEach(function(attendeeId) {
-                                    self.getSimpleUser(attendeeId, function(userObj) {
-                                        newEvent.attendees.push(userObj);
-                                    });
-                                });
-                                lockedEvents.push(newEvent);
-                            }
-                        }
-                        if (i == doc.activeEvents.length)
-                            callback(lockedEvents);
+                docs.forEach(function(doc) {
+                    var newEvent = JSON.parse(JSON.stringify(doc));
+                    newEvent.attendees = [];
+                    newEvent = timeService.prettify(newEvent);
+                    doc.attendees.forEach(function(attendeeId) {
+                        self.getSimpleUser(attendeeId, function(userObj) {
+                            newEvent.attendees.push(userObj);
+                        });
                     });
-                }
+                    lockedEvents.push(newEvent);
+                });
+                callback(lockedEvents);
             }
         });
+
+
+
+        //var self = this;
+        //var id = mongoose.Types.ObjectId(userId.toString());
+        //User.findById(id, 'activeEvents', function(err, doc) {
+        //    if (err) {
+        //        callback(err);
+        //    }
+        //    else {
+        //        var lockedEvents = [];
+        //        if (doc.activeEvents.length == 0) {
+        //            callback(lockedEvents);
+        //        }
+        //        for (var i = 0; i < doc.activeEvents.length; ++i) {
+        //            Event.findOne({
+        //                _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
+        //                organizer: {$ne: userId }
+        //            }, function (err, event) {
+        //                if (err) callback(err);
+        //                if (event != null) {
+        //                    var newEvent = JSON.parse(JSON.stringify(event));
+        //                    newEvent.attendees = [];
+        //                    newEvent = timeService.prettify(newEvent);
+        //                    //Find locked event that hasn't ended yet
+        //                    if (event.lockTime < Date.now() && event.endTime > Date.now()) {
+        //                        event.attendees.forEach(function(attendeeId) {
+        //                            self.getSimpleUser(attendeeId, function(userObj) {
+        //                                newEvent.attendees.push(userObj);
+        //                            });
+        //                        });
+        //                        lockedEvents.push(newEvent);
+        //                    }
+        //                }
+        //                if (i == doc.activeEvents.length)
+        //                    callback(lockedEvents);
+        //            });
+        //        }
+        //    }
+        //});
     },
     getTentativeEvents: function(userId, callback) {
-        var id = mongoose.Types.ObjectId(userId.toString());
-        User.findById(id, 'activeEvents', function(err, doc) {
+
+        Event.find({
+            organizer: { $ne: userId},
+            attendees: {$in: [userId]},
+            lockTime: {$gt: Date.now()}
+        }, function(err, docs) {
             if (err) {
                 callback(err);
-            }
-            else {
-                var tentativeEvents = [];
-                if (doc.activeEvents.length == 0) {
-                    callback(tentativeEvents);
-                }
-                for (var i = 0; i < doc.activeEvents.length; ++i) {
-                    Event.findOne({
-                        _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
-                        organizer: {$ne: userId.toString() }
-                    }, function (err, event) {
-                        if (err) callback(err);
-                        if (event != null) {
-                            //Find tentative event (not locked) that hasn't ended yet
-                            if (event.lockTime > Date.now() && event.endTime > Date.now()) {
-                                event.attendees = [];
-                                event.organizer = "";
-                                event = timeService.prettify(event);
-                                tentativeEvents.push(event);
-                            }
-                        }
-                        if (i == doc.activeEvents.length)
-                            callback(tentativeEvents);
-                    });
-                }
+            } else {
+                docs.forEach(function(doc) {
+                    doc['attendees'] = [];
+                    doc['organizer'] = "";
+                    doc = timeService.prettify(doc);
+                });
+                callback(docs);
             }
         });
+
+
+        //var id = mongoose.Types.ObjectId(userId.toString());
+        //User.findById(id, 'activeEvents', function(err, doc) {
+        //    if (err) {
+        //        callback(err);
+        //    }
+        //    else {
+        //        var tentativeEvents = [];
+        //        if (doc.activeEvents.length == 0) {
+        //            callback(tentativeEvents);
+        //        }
+        //        for (var i = 0; i < doc.activeEvents.length; ++i) {
+        //            Event.findOne({
+        //                _id: mongoose.Types.ObjectId(doc.activeEvents[i].toString()),
+        //                organizer: {$ne: userId.toString() }
+        //            }, function (err, event) {
+        //                if (err) callback(err);
+        //                if (event != null) {
+        //                    //Find tentative event (not locked) that hasn't ended yet
+        //                    if (event.lockTime > Date.now() && event.endTime > Date.now()) {
+        //                        event.attendees = [];
+        //                        event.organizer = "";
+        //                        event = timeService.prettify(event);
+        //                        tentativeEvents.push(event);
+        //                    }
+        //                }
+        //                if (i == doc.activeEvents.length)
+        //                    callback(tentativeEvents);
+        //            });
+        //        }
+        //    }
+        //});
     }
 };
 

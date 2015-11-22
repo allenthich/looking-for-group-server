@@ -25,7 +25,7 @@ var ChatsService = {
     },
     deleteChat: function(chatId, callback) {
         var id = mongoose.Types.ObjectId(chatId);
-        Chat.findByIdAndRemove(id, function(err, callback) {
+        Chat.findByIdAndRemove(id, function(err) {
             if (err) { callback(err); }
             else {
                 callback({status: 200, message: "Chat deleted!"});
@@ -56,7 +56,7 @@ var ChatsService = {
         });
     },
     getMessage: function(messageId, callback) {
-        var id = mongoose.Types.ObjectId(chatId);
+        var id = mongoose.Types.ObjectId(messageId);
         Message.findById(id, function(err, message) {
             if (err) {
                 callback(err);

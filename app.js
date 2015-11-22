@@ -13,6 +13,7 @@ var chats = require('./routes/chats');
 
 mongoose.connect('mongodb://alengeo:fort20twenty@candidate.56.mongolayer.com:10519,candidate.55.mongolayer.com:10558/LFG?replicaSet=set-56500e1b74a290e4be0000fd')
 
+
 var app = express();
 
 // view engine setup
@@ -63,5 +64,22 @@ app.use(function(err, req, res, next) {
   });
 });
 
+//var CronJob = require('cron').CronJob;
+//
+////Init group chat assoc. chat with event
+//var checkLockingEvents = new CronJob('0 */1 * * * *', function() {
+//    }, function () {
+//      /* This function is executed when the job stops */
+//    },
+//    true
+//);
+//
+////Move events to pastEvents
+//var checkEndingEvents = new CronJob('0 */1 * * * *', function() {
+//    }, function () {
+//
+//    },
+//    true
+//);
 
 module.exports = app;

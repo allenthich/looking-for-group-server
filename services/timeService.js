@@ -3,9 +3,10 @@
 var TimeService = {
     prettify: function(uglyObject) {
         var newObject = JSON.parse(JSON.stringify(uglyObject));
-        newObject['startTime'] = Date.parse(newObject.startTime);
-        newObject['endTime'] = Date.parse(newObject.endTime);
-        newObject['lockTime'] = Date.parse(newObject.lockTime);
+        console.log(newObject)
+        newObject['startTime'] = new Date(newObject.startTime);
+        newObject['endTime'] = new Date(newObject.endTime);
+        newObject['lockTime'] = new Date(newObject.lockTime);
         return newObject;
     }
 };

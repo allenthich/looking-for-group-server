@@ -5,8 +5,16 @@ var userService = require('../services/userService.js');
 var router = express.Router();
 
 router.use(function (req, res, next) {
-  console.log("Cookie user: ", req.body.api_token);
-  userService.checkAuthentication(req.body.api_token, function(resp) {
+  req.token = req.body.api_token;
+  if (!req.token) {
+    req.token = req.params.api_token;
+  }
+  if (!req.token) {
+    req.token = req.query.api_token;
+  }
+  console.log("Token: ", req.token);
+
+  userService.checkAuthentication(req.token, function(resp) {
     if (resp.status != 200){
       res.sendStatus(401);
     } else {
