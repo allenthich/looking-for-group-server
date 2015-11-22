@@ -252,12 +252,13 @@ var UserService = {
             if (err) {
                 callback(err);
             } else {
+                var tentEvents = [];
                 docs.forEach(function(doc) {
                     doc['attendees'] = [];
                     doc['organizer'] = "";
-                    doc = timeService.prettify(doc);
+                    tentEvents.push(timeService.prettify(doc));
                 });
-                callback(docs);
+                callback(tentEvents);
             }
         });
 
