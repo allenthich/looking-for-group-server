@@ -166,12 +166,13 @@ var UserService = {
             if (err) {
                 callback(err);
             } else {
+                var prettyEvents = [];
                 docs.forEach(function(doc) {
                     doc['attendees'] = [];
                     doc['organizer'] = "";
-                    doc = timeService.prettify(doc);
+                    prettyEvents.push(timeService.prettify(doc));
                 });
-                callback(docs);
+                callback(prettyEvents);
             }
         });
     },

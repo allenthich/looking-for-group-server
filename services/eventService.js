@@ -164,7 +164,11 @@ var EventsService = {
                 if (err) {
                     callback(err);
                 } else {
-                    callback(events);
+                    var newEve = [];
+                    events.forEach(function(event) {
+                        newEve.push(timeService.prettify(event));
+                    });
+                    callback(newEve);
                 }
             });
         });
